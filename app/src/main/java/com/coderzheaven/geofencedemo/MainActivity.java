@@ -1,10 +1,13 @@
 package com.coderzheaven.geofencedemo;
 
+import android.Manifest;
 import android.app.PendingIntent;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
@@ -85,10 +88,16 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
                 public void onConnected(Bundle bundle) {
                     Log.i(TAG, "onConnected");
 
-                    Location location = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+                    Location location = null;
+                    if (checkPermission()) {
+                        location = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+                    }
+
 
                     if (location == null) {
-                        LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, MainActivity.this);
+                        if (checkPermission()) {
+                            LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, MainActivity.this);
+                        }
 
                     } else {
                         //If everything went fine lets get latitude and longitude
@@ -101,29 +110,33 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
                         //registerGeofences(mGeofenceList);
                     }
 
-                    try{
-                    LocationServices.GeofencingApi.addGeofences(
-                            mGoogleApiClient,
-                            getGeofencingRequest(),
-                            getGeofencePendingIntent()
-                    ).setResultCallback(new ResultCallback<Status>() {
+                    try {
+                        if (checkPermission()) {
+                            LocationServices.GeofencingApi.addGeofences(
+                                    mGoogleApiClient,
+                                    getGeofencingRequest(),
+                                    getGeofencePendingIntent()
+                            ).setResultCallback(new ResultCallback<Status>() {
 
-                        @Override
-                        public void onResult(Status status) {
-                            if (status.isSuccess()) {
-                                Log.i(TAG, "Saving Geofence");
+                                @Override
+                                public void onResult(Status status) {
+                                    if (status.isSuccess()) {
+                                        Log.i(TAG, "Saving Geofence");
 
-                            } else {
-                                Log.e(TAG, "Registering geofence failed: " + status.getStatusMessage() +
-                                        " : " + status.getStatusCode());
-                            }
+                                    } else {
+                                        Log.e(TAG, "Registering geofence failed: " + status.getStatusMessage() +
+                                                " : " + status.getStatusCode());
+                                    }
+                                }
+                            });
+
                         }
-                    });
 
-                } catch (SecurityException securityException) {
-                    // Catch exception generated if the app does not use ACCESS_FINE_LOCATION permission.
-                    Log.e(TAG, "Error");
-                }
+
+                    } catch (SecurityException securityException) {
+                        // Catch exception generated if the app does not use ACCESS_FINE_LOCATION permission.
+                        Log.e(TAG, "Error");
+                    }
                 }
 
                 @Override
@@ -180,6 +193,14 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         currentLatitude = location.getLatitude();
         currentLongitude = location.getLongitude();
         Log.i(TAG, "onLocationChanged");
+    }
+
+    // Check for permission to access Location
+    private boolean checkPermission() {
+        Log.d(TAG, "checkPermission()");
+        // Ask for permission if it wasn't granted yet
+        return (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED);
     }
 
 }
